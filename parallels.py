@@ -48,11 +48,15 @@ class Movement:
 def main():
     m = mido.MidiFile(sys.argv[1])
     movements = defaultdict(dict)
+    time_signatures = []
     for track_idx, track in enumerate(m.tracks):
         time = 0
         note_number = 0
         prev_note = None
         for msg in track:
+            if msg.type == 'time_signature':
+                time_signatures.append(msg)
+                continue
             if msg.type != 'note_on':
                 continue
             time += msg.time
@@ -70,7 +74,13 @@ def main():
                     continue
                 other_movement = movements[other_track_idx][time]
                 if movement.is_parallel_to_movement(other_movement):
-                    print(f"{time} ticks: Track {track_idx}'s movement from {midi_note_to_ly[movement.from_note % 12]} to {midi_note_to_ly[movement.to_note % 12]} (note #{movement.note_number}) is parallel to Track {other_track_idx}'s movement from {midi_note_to_ly[other_movement.from_note % 12]} to {midi_note_to_ly[other_movement.to_note % 12]} (note #{other_movement.note_number})")
+                    beat = time/m.ticks_per_beat
+                    location = f'Beat #{beat}'
+                    if len(time_signatures) == 1:
+                        measure = int(beat // time_signatures[0].numerator)
+                        beat -= int(measure * time_signatures[0].numerator)
+                        location = f'Measure {measure} beat {beat}'
+                    print(f"{location}: Track {track_idx}'s movement from {midi_note_to_ly[movement.from_note % 12]} to {midi_note_to_ly[movement.to_note % 12]} is parallel to Track {other_track_idx}'s movement from {midi_note_to_ly[other_movement.from_note % 12]} to {midi_note_to_ly[other_movement.to_note % 12]}")
 
 
 if __name__ == '__main__':
